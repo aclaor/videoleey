@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Videoleey — Open AI Video Generation</title>
+<meta name="description" content="Free, open-source text-to-video and image-to-video generation powered by Wan 2.2." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>" />
+<style>
+  :root {
+    --bg: #0b0b10;
+    --surface: #14141c;
+    --surface-2: #1c1c27;
+    --border: #2a2a38;
+    --text: #edecf2;
+    --muted: #9a98ab;
+    --accent: #7c5cff;
+    --accent-hover: #6a47ff;
+    --danger: #ff6b6b;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 32px 16px 80px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 36px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+  .brand span:first-child { font-size: 26px; }
+  .quota { font-size: 13px; color: var(--muted); background: var(--surface); border: 1px solid var(--border); padding: 6px 12px; border-radius: 999px; }
+
+  h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.15; letter-spacing: -0.03em; margin: 0 0 10px; }
+  .sub { color: var(--muted); margin: 0 0 32px; max-width: 58ch; }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 24px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 7px; }
+  textarea, select, input[type="file"] {
+    width: 100%; background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px;
+    font: inherit; font-size: 15px; resize: vertical;
+  }
+  textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .field + .field { margin-top: 18px; }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+
+  button.primary {
+    width: 100%; margin-top: 22px; padding: 14px; font: inherit; font-weight: 650; font-size: 16px;
+    background: var(--accent); color: #fff; border: 0; border-radius: 10px; cursor: pointer;
+    transition: background .15s ease;
+  }
+  button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+  button.primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  .stage {
+    aspect-ratio: 16 / 9; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius); display: grid; place-items: center; overflow: hidden; position: relative;
+  }
+  .stage video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+  .placeholder { color: var(--muted); font-size: 14px; text-align: center; padding: 24px; }
+  .spinner {
+    width: 34px; height: 34px; border: 3px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 14px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status { margin-top: 14px; font-size: 14px; color: var(--muted); min-height: 22px; }
+  .status.error { color: var(--danger); }
+  .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .actions a, .actions button {
+    font: inherit; font-size: 14px; padding: 9px 15px; border-radius: 9px;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+    text-decoration: none; cursor: pointer;
+  }
+  .actions a:hover, .actions button:hover { border-color: var(--accent); }
+
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .examples button {
+    font: inherit; font-size: 12.5px; padding: 6px 11px; border-radius: 999px;
+    background: transparent; color: var(--muted); border: 1px solid var(--border); cursor: pointer;
+  }
+  .examples button:hover { color: var(--text); border-color: var(--accent); }
+
+  footer { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><span>🎬</span><span>Videoleey</span></div>
+    <div class="quota" id="quota">&nbsp;</div>
+  </header>
+
+  <h1>Open-source AI video, free to run.</h1>
+  <p class="sub">
+    Text-to-video and image-to-video powered by Wan 2.2 (Apache 2.0) — running on free GPU,
+    so you own the model and the output.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="field">
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" rows="5" placeholder="A cinematic aerial shot over a misty pine forest at sunrise, golden light breaking through the canopy, slow forward dolly, 35mm film"></textarea>
+        <div class="examples" id="examples"></div>
+      </div>
+
+      <div class="field">
+        <label for="image">Starting image <span style="font-weight:400">(optional)</span></label>
+        <input type="file" id="image" accept="image/*" />
+        <div class="hint">Leave empty for text-to-video. Upload one to animate it instead.</div>
+      </div>
+
+      <div class="field">
+        <label for="preset">Quality</label>
+        <select id="preset">
+          <option value="Fast preview — 480p, 2s">Fast preview — 480p, 2s</option>
+          <option value="Balanced — 480p, 3s">Balanced — 480p, 3s</option>
+          <option value="Quality — 720p, 3s">Quality — 720p, 3s</option>
+          <option value="Max — 720p, 5s">Max — 720p, 5s</option>
+        </select>
+        <div class="hint">Higher settings look better but take longer and may time out on the free GPU tier.</div>
+      </div>
+
+      <button class="primary" id="go">Generate video</button>
+    </div>
+
+    <div>
+      <div class="stage" id="stage">
+        <div class="placeholder" id="placeholder">Your video will appear here.</div>
+      </div>
+      <div class="status" id="status"></div>
+      <div class="actions" id="actions" hidden>
+        <a id="download" download="videoleey.mp4">Download</a>
+        <button id="save">Save a permanent link</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Built on <a href="https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B-Diffusers" target="_blank" rel="noopener">Wan 2.2 TI2V-5B</a>.
+    Generation runs on a shared free GPU, so there may be a queue.
+  </footer>
+</div>
+
+<script src="config.js"></script>
+<script type="module">
+import { Client } from "https://esm.sh/@gradio/client@1.15.0";
+
+const cfg = window.VIDEOLEEY_CONFIG;
+const $ = (id) => document.getElementById(id);
+const statusEl = $("status");
+const stage = $("stage");
+const actions = $("actions");
+
+let client = null;
+let currentUrl = null;
+
+const EXAMPLES = [
+  "A neon-lit Tokyo alley in the rain, reflections on wet asphalt, slow tracking shot",
+  "Macro shot of coffee poured into a glass cup, steam rising, warm morning light",
+  "A paper boat drifting down a rain gutter, shallow depth of field, cinematic",
+];
+
+EXAMPLES.forEach((text) => {
+  const b = document.createElement("button");
+  b.textContent = text.length > 44 ? text.slice(0, 41) + "…" : text;
+  b.title = text;
+  b.onclick = () => { $("prompt").value = text; };
+  $("examples").appendChild(b);
+});
+
+function setStatus(message, isError = false) {
+  statusEl.textContent = message;
+  statusEl.classList.toggle("error", isError);
+}
+
+function showLoading(message) {
+  stage.innerHTML = `<div class="placeholder"><div class="spinner"></div>${message}</div>`;
+}
+
+async function refreshQuota() {
+  try {
+    const r = await fetch(`${cfg.API_BASE}/api/config`);
+    const d = await r.json();
+    $("quota").textContent = `${d.dailyLimit} free generations per day`;
+  } catch {
+    $("quota").textContent = "";
+  }
+}
+refreshQuota();
+
+$("go").onclick = async () => {
+  const prompt = $("prompt").value.trim();
+  if (!prompt) return setStatus("Please enter a prompt first.", true);
+
+  $("go").disabled = true;
+  actions.hidden = true;
+  currentUrl = null;
+
+  try {
+    setStatus("Checking your daily quota…");
+    const q = await fetch(`${cfg.API_BASE}/api/quota`, { method: "POST" });
+    const qd = await q.json();
+    if (!q.ok) throw new Error(qd.error || "Quota check failed.");
+    $("quota").textContent = `${qd.limit - qd.used} of ${qd.limit} generations left today`;
+
+    showLoading("Connecting to the model…");
+    setStatus("This can take 1–4 minutes depending on the queue. Keep this tab open.");
+    if (!client) client = await Client.connect(cfg.SPACE_ID);
+
+    const file = $("image").files[0] || null;
+    showLoading("Generating…");
+
+    const result = await client.predict("/generate", {
+      prompt,
+      image: file,
+      preset: $("preset").value,
+      guidance_scale: 5,
+      seed: -1,
+      randomize_seed: true,
+    });
+
+    const video = result.data?.[0];
+    const url = video?.url || video?.video?.url;
+    if (!url) throw new Error("The model returned no video. Try a shorter preset.");
+
+    currentUrl = url;
+    stage.innerHTML = "";
+    const el = document.createElement("video");
+    Object.assign(el, { src: url, controls: true, autoplay: true, loop: true, muted: true, playsInline: true });
+    stage.appendChild(el);
+
+    $("download").href = url;
+    actions.hidden = false;
+    setStatus(`Done — seed ${result.data?.[1] ?? "?"}.`);
+  } catch (err) {
+    stage.innerHTML = `<div class="placeholder">Nothing generated.</div>`;
+    setStatus(err.message || String(err), true);
+  } finally {
+    $("go").disabled = false;
+  }
+};
+
+$("save").onclick = async () => {
+  if (!currentUrl) return;
+  $("save").disabled = true;
+  setStatus("Saving…");
+  try {
+    const r = await fetch(`${cfg.API_BASE}/api/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: currentUrl }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "Save failed.");
+    setStatus("");
+    const link = document.createElement("a");
+    link.href = d.url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = "Permanent link";
+    statusEl.append("Saved. ", link);
+  } catch (err) {
+    setStatus(err.message, true);
+  } finally {
+    $("save").disabled = false;
+  }
+};
+</script>
+</body>
+</html>
